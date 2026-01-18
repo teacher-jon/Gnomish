@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gnorman's Mega Stew</title>
+    <style>
+        :root {
+            --forest-green: #2d6a4f;
+            --mushroom-red: #d90429;
+            --stew-brown: #8d5524;
+            --bg-color: #f0f7f4;
+        }
+
+        body {
+            font-family: 'Comic Sans MS', 'Chalkboard SE', sans-serif;
+            background-color: var(--bg-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-image: radial-gradient(#d8e2dc 15%, transparent 16%), radial-gradient(#d8e2dc 15%, transparent 16%);
+            background-size: 60px 60px;
+        }
+
+        .game-container {
+            background: white;
+            width: 90%;
+            max-width: 600px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            overflow: hidden;
+            text-align: center;
+            border: 4px solid var(--forest-green);
+            position: relative;
+        }
+
+        .header {
+            background-color: var(--forest-green);
+            color: white;
+            padding: 15px;
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        .gnome-area {
+            padding: 20px 20px 0 20px;
+        }
+
+        .gnome-avatar {
+            font-size: 80px;
+            margin-top: -10px;
+            margin-bottom: 5px;
+            display: inline-block;
+            filter: drop-shadow(0 4px 0px rgba(0,0,0,0.2));
+            cursor: default;
+        }
+
+        .pot-display {
+            font-size: 1.5rem;
+            margin: 10px 0;
+            background: #ffe8d6;
+            padding: 15px;
+            border-radius: 10px;
+            display: inline-block;
+            border: 2px dashed var(--stew-brown);
+            width: 85%;
+            font-family: monospace;
+            white-space: pre;
+        }
+
+        .dialogue-box {
+            padding: 20px;
+            font-size: 1.3rem;
+            min-height: 100px;
+            color: #333;
+            line-height: 1.4;
+        }
+
+        .input-area {
+            padding: 20px;
+            background: #f8f9fa;
+            border-top: 2px solid #eee;
+        }
+
+        input[type="text"] {
+            font-size: 1.2rem;
+            padding: 12px;
+            border: 2px solid #ccc;
+            border-radius: 10px;
+            width: 50%;
+            text-align: center;
+            outline: none;
+            font-family: inherit;
+        }
+
+        input[type="text"]:focus {
+            border-color: var(--forest-green);
+        }
+
+        button {
+            font-size: 1.2rem;
+            padding: 12px 20px;
+            background-color: var(--mushroom-red);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            margin-left: 5px;
+            font-family: inherit;
+            transition: transform 0.1s;
+        }
+
+        button:active {
+            transform: scale(0.95);
+        }
+
+        .shake { animation: shake 0.5s; }
+        .bounce { animation: bounce 0.5s; }
+
+        @keyframes shake {
+            0% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            50% { transform: translateX(10px); }
+            75% { transform: translateX(-10px); }
+            100% { transform: translateX(0); }
+        }
+
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% {transform: translateY(0);}
+            40% {transform: translateY(-20px);}
+            60% {transform: translateY(-10px);}
+        }
+
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="game-container" id="gameBox">
+    <div class="header">Gnorman's Mega Stew 🍄</div>
+    
+    <div class="gnome-area">
+        <div class="gnome-avatar" id="avatar">🧙‍♂️</div>
+        
+        <div class="pot-display" id="potStatus">
+            🍲 [ ] [ ] [ ] [ ] [ ]
+        </div>
+
+        <div class="dialogue-box" id="dialogue">
+            Loading Gnorman...
+        </div>
+    </div>
+
+    <div class="input-area" id="inputSection">
+        <input type="text" id="userInput" placeholder="Type word here..." autocomplete="off">
+        <button onclick="checkAnswer()">Cook!</button>
+    </div>
+
+    <div class="input-area hidden" id="restartSection">
+        <button onclick="startGame()">Cook Another Batch! 🥣</button>
+    </div>
+</div>
+
+<script>
+    // EXPANDED DATA POOLS (Clues Removed - Natural Text Only)
+    const levels = {
+        1: [ // Level 1: Colors (-ish)
+            { suffix: "ish", target: "reddish", alt: ["redish"], riddle: "The broth is too bright red! I need it softer... only sort of red." },
+            { suffix: "ish", target: "greenish", alt: ["grenish"], riddle: "Yuck! This green spinach is too strong. I need a mushroom that is only sort of green." },
+            { suffix: "ish", target: "bluish", alt: ["blueish"], riddle: "The water is dark blue! I want it lighter... just kind of blue." }
+        ],
+        2: [ // Level 2: Feelings (-less / -ful)
+            { suffix: "less", target: "fearless", alt: [], riddle: "I need a brave mushroom! One that is without fear." },
+            { suffix: "ful", target: "helpful", alt: [], riddle: "I need a nice mushroom to fix the stew. One that is full of help." },
+            { suffix: "less", target: "powerless", alt: [], riddle: "My stove won't turn on! It has no electricity. It is without power." }
+        ],
+        3: [ // Level 3: Jobs (-er / -or)
+            { suffix: "er", target: "teacher", alt: [], riddle: "I need a mushroom that helps me learn. A person who teaches." },
+            { suffix: "er", target: "farmer", alt: [], riddle: "Who grew these carrots? I need the person who farms." },
+            { suffix: "er", target: "painter", alt: [], riddle: "The kitchen is plain white. I need a person who paints." }
+        ],
+        4: [ // Level 4: Time Travel (-ed vs -ing)
+            { suffix: "ed", target: "cooked", alt: [], riddle: "This stew is raw! I need you to cook it... but like you did it yesterday." },
+            { suffix: "ing", target: "jumping", alt: [], riddle: "This mushroom is too still! I need one that is moving. One that is jumping right now." },
+            { suffix: "ed", target: "melted", alt: [], riddle: "The butter is hard! I need butter that melted in the past." }
+        ],
+        5: [ // Level 5: The "Un" Doers (Prefixes Un- / Re-)
+            { suffix: "un", target: "unlock", alt: [], riddle: "The pantry is locked! I need a key to undo the lock." },
+            { suffix: "re", target: "remix", alt: [], riddle: "This stew tastes bad. I need to mix it again." },
+            { suffix: "un", target: "unhappy", alt: [], riddle: "This mushroom is crying! It is happy... but the opposite." }
+        ],
+        6: [ // Level 6: How things happen (-ly)
+            { suffix: "ly", target: "slowly", alt: [], riddle: "The stew is boiling too fast! I need it to cook slow." },
+            { suffix: "ly", target: "loudly", alt: [], riddle: "Shhh! The soup is bubbling loud. How is it bubbling?" },
+            { suffix: "ly", target: "softly", alt: [], riddle: "I need to stir the pot gentle and soft. How should I stir it?" }
+        ]
+    };
+
+    let currentLevelOrder = []; 
+    let levelIndex = 0;
+    let currentQuestion = null;
+    let potIngredients = 0;
+    const MAX_INGREDIENTS = 5;
+
+    const sounds = {
+        correct: ["*SPLASH!* 💦", "Yum!", "Delicious!", "Perfecto!", "Tasty!", "Mmmph!"],
+        wrong: ["Ptooey! 🤢", "Yuck!", "Bleh!", "Ack!", "Puh-tooey!"]
+    };
+
+    function startGame() {
+        potIngredients = 0;
+        levelIndex = 0;
+        
+        let availableLevels = [1, 2, 3, 4, 5, 6];
+        availableLevels.sort(() => Math.random() - 0.5); 
+        currentLevelOrder = availableLevels.slice(0, MAX_INGREDIENTS);
+
+        updatePot();
+        document.getElementById('inputSection').classList.remove('hidden');
+        document.getElementById('restartSection').classList.add('hidden');
+        document.getElementById('avatar').innerText = "🧙‍♂️";
+        document.getElementById('userInput').value = "";
+        
+        setTimeout(() => document.getElementById('userInput').focus(), 100);
+        
+        loadQuestion();
+    }
+
+    function loadQuestion() {
+        let lvlNum = currentLevelOrder[levelIndex];
+        const pool = levels[lvlNum];
+        
+        currentQuestion = pool[Math.floor(Math.random() * pool.length)];
+        
+        const dialogue = document.getElementById('dialogue');
+        dialogue.innerHTML = currentQuestion.riddle;
+        dialogue.classList.remove('bounce');
+    }
+
+    function updatePot() {
+        let pot = "🍲 ";
+        for(let i=0; i<MAX_INGREDIENTS; i++) {
+            if(i < potIngredients) pot += "[🍄] ";
+            else pot += "[ ] ";
+        }
+        document.getElementById('potStatus').innerText = pot;
+    }
+
+    function checkAnswer() {
+        const input = document.getElementById('userInput').value.toLowerCase().trim();
+        const dialogue = document.getElementById('dialogue');
+        const gameBox = document.getElementById('gameBox');
+
+        if (!input) return;
+
+        if (input === currentQuestion.target || currentQuestion.alt.includes(input)) {
+            potIngredients++;
+            updatePot();
+            
+            const praise = sounds.correct[Math.floor(Math.random() * sounds.correct.length)];
+            dialogue.innerHTML = `${praise} You made <b>${currentQuestion.target}</b>!`;
+            gameBox.classList.add('bounce');
+            document.getElementById('userInput').value = "";
+
+            setTimeout(() => {
+                gameBox.classList.remove('bounce');
+                if (potIngredients >= MAX_INGREDIENTS) {
+                    winGame();
+                } else {
+                    levelIndex++;
+                    loadQuestion();
+                }
+            }, 1800);
+
+        } else {
+            const grump = sounds.wrong[Math.floor(Math.random() * sounds.wrong.length)];
+            let partType = currentQuestion.suffix.length > 2 ? "suffix" : "part";
+            dialogue.innerHTML = `${grump} <br> I don't want <b>${input}</b>. <br>Try adding the ${partType} <b>${currentQuestion.suffix}</b>!`;
+            gameBox.classList.add('shake');
+            
+            setTimeout(() => {
+                gameBox.classList.remove('shake');
+            }, 500);
+        }
+    }
+
+    function winGame() {
+        document.getElementById('dialogue').innerHTML = "🎉 MEGA STEW IS READY! 🎉<br>You are a Grand Master Word Chef!";
+        document.getElementById('avatar').innerText = "😋";
+        document.getElementById('inputSection').classList.add('hidden');
+        document.getElementById('restartSection').classList.remove('hidden');
+    }
+
+    document.getElementById('userInput').addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') {
+            checkAnswer();
+        }
+    });
+
+    startGame();
+
+</script>
+
+</body>
+</html>
